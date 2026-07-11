@@ -80,3 +80,12 @@ pyxlsb==1.0.10
 # license) and carries no published security advisories. Pinned here to make the
 # reviewed version explicit (#20).
 parsedatetime==2.6
+
+# odfpy is pulled in transitively via pandas[excel] to read/write the
+# OpenDocument spreadsheet (.ods) format. 1.4.1 is the latest release on PyPI
+# (published 2020-01-18); there is nothing newer to bump to. It is Apache
+# Software licensed (an authorized license) and carries no published security
+# advisories. Superset's own upload flow only accepts xlsx/xls, so no
+# first-party code depends on it. Pinned here to make the reviewed version
+# explicit (#19).
+odfpy==1.4.1

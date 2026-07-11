@@ -255,7 +255,9 @@ numpy==1.26.4
     #   numexpr
     #   pandas
 odfpy==1.4.1
-    # via pandas
+    # via
+    #   -r requirements/base.in
+    #   pandas
 openapi-schema-validator==0.6.3
     # via -r requirements/base.in
 openpyxl==3.1.5
