@@ -72,3 +72,11 @@ google-auth>=2.53.0,<3.0.0
 # xlsx/xls (EXCEL_EXTENSIONS), so no first-party code depends on it. Pinned here
 # to make the reviewed version explicit (#21).
 pyxlsb==1.0.10
+
+# parsedatetime backs the human-readable relative-date parsing in
+# superset.utils.date_parser (parse_human_datetime / DateRangeMigration). 2.6 is
+# the latest release on PyPI (published 2020-05-31); versions only go up to 2.6,
+# so there is nothing newer to bump to. It is Apache-2.0 licensed (an authorized
+# license) and carries no published security advisories. Pinned here to make the
+# reviewed version explicit (#20).
+parsedatetime==2.6
