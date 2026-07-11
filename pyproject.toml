@@ -82,14 +82,22 @@ dependencies = [
     "nh3>=0.3.5, <0.4",
     # numpy 2.x: floor raised to 2.0 after the #17 compatibility review. All
     # numpy consumers in the resolved tree support 2.x (pandas>=2.2.2,
-    # pyarrow>=24, numexpr>=2.10, bottleneck>=1.4); the <2.3 cap tracks the
-    # numpy release currently validated against pandas.
+    # pyarrow>=24, numexpr>=2.10, bottleneck>=1.4). The <2.3 cap is bounded by
+    # this project's Python floor: numpy 2.3 dropped Python 3.10 (supports
+    # 3.11-3.13), so 2.2.x is the newest series that still honours the
+    # "requires-python = >=3.10" contract above. numpy 2.2.6 is the last 2.2.x
+    # patch release, so the pin already tracks the current stable release for
+    # the supported Python range (#9).
     "numpy>=2.0.0, <2.3",
     "packaging",
     # --------------------------
     # pandas and related (wanting pandas[performance] without numba as it's 100+MB and not needed)
     # pandas floor is 2.2.2, the first release with numpy 2.x support (keeps the
     # abstract constraints self-consistent with the numpy>=2 floor above, #17).
+    # The <2.4 cap is bounded by the Python floor as well: pandas 3.0 dropped
+    # Python 3.10 (requires >=3.11), so the 2.3.x series is the newest that
+    # supports Python 3.10. pandas 2.3.3 is the last 2.3.x release, i.e. the
+    # current stable version for the supported Python range (#9).
     "pandas[excel]>=2.2.2, <2.4",
     "bottleneck", # recommended performance dependency for pandas, see https://pandas.pydata.org/docs/getting_started/install.html#performance-dependencies-recommended
     # --------------------------
