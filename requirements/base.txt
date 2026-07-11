@@ -282,7 +282,9 @@ paramiko==3.5.1
     #   apache-superset (pyproject.toml)
     #   sshtunnel
 parsedatetime==2.6
-    # via apache-superset (pyproject.toml)
+    # via
+    #   -r requirements/base.in
+    #   apache-superset (pyproject.toml)
 pgsanity==0.2.9
     # via apache-superset (pyproject.toml)
 pillow==12.2.0
