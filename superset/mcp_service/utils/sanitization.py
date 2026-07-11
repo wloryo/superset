@@ -262,16 +262,54 @@ def _check_dangerous_patterns(value: str, field_name: str) -> None:
         raise ValueError(f"{field_name} contains potentially malicious event handler")
 
 
+# Defense-in-depth denylist for filter *values*. These are heuristics only:
+# the authoritative protection against SQL injection through filter values is
+# that they are bound as query parameters by SQLAlchemy downstream (simple
+# ``col``/``op``/``val`` filters are never string-interpolated into SQL). Values
+# are free-form user text, so this list is deliberately conservative to avoid
+# rejecting legitimate content — it is NOT a substitute for parameterization.
+_FILTER_VALUE_SQL_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r";\s*(DROP|DELETE|INSERT|UPDATE|CREATE|ALTER|EXEC|EXECUTE)\b",
+        r"'\s*OR\s*'",
+        r"'\s*AND\s*'",
+        r"--\s*",
+        r"/\*",
+        r"UNION\s+SELECT",
+    )
+)
+
+
+# Identifiers (column / dimension / saved-metric names) are validated against a
+# positive allowlist. A denylist of "bad" tokens is inherently bypassable
+# (new operators, quoting styles, or encodings can always be found), so the
+# stronger control is to require the *entire* value to consist only of
+# characters that can legitimately appear in an identifier reference: word
+# characters (letters/digits/underscore, incl. Unicode), spaces, dots (for
+# ``schema.table.column`` qualification), and hyphens. Anything with quotes,
+# parentheses, operators, or comment syntax is rejected. Custom SQL belongs in
+# dedicated expression fields (see ``sanitize_sql_expression``), never here.
+_SAFE_IDENTIFIER_RE = re.compile(r"^[\w .\-]+$")
+
+
 def _check_sql_patterns(value: str, field_name: str) -> None:
     """
-    Check for SQL injection patterns.
+    Validate an identifier against an allowlist, with denylist heuristics.
+
+    The allowlist (``_SAFE_IDENTIFIER_RE``) is the primary control; the keyword
+    and metacharacter checks below run first only to emit more specific error
+    messages for the most common mistakes. Callers must strip dangerous Unicode
+    (see ``_remove_dangerous_unicode``) *before* invoking this so obfuscated
+    keywords cannot slip past the scans.
 
     Args:
         value: The input string to check
         field_name: Name of the field (for error messages)
 
     Raises:
-        ValueError: If SQL injection patterns are found
+        ValueError: If SQL injection patterns are found or the value contains
+            characters that are not allowed in an identifier.
     """
     # Check for dangerous SQL keywords
     if re.search(
@@ -288,6 +326,16 @@ def _check_sql_patterns(value: str, field_name: str) -> None:
     # Check for SQL comment start
     if "/*" in value:
         raise ValueError(f"{field_name} contains potentially unsafe SQL comment syntax")
+
+    # Allowlist enforcement: reject anything that is not a plain identifier.
+    # This is the authoritative guard — it closes bypasses the denylists above
+    # miss (quotes, parentheses, operators, backslashes, Unicode homoglyphs).
+    if not _SAFE_IDENTIFIER_RE.match(value):
+        raise ValueError(
+            f"{field_name} contains characters that are not allowed in an "
+            f"identifier (only letters, digits, underscores, spaces, dots, "
+            f"and hyphens are permitted)"
+        )
 
 
 def _remove_dangerous_unicode(value: str) -> str:
@@ -388,15 +436,18 @@ def sanitize_user_input(
     # Strip all HTML tags using nh3
     value = _strip_html_tags(value)
 
+    # Remove dangerous Unicode characters BEFORE the pattern scans. Zero-width
+    # and control characters spliced into a keyword (e.g. ``DR<ZWSP>OP``) would
+    # otherwise slip past the checks below and then be silently stripped,
+    # reconstituting the payload in the returned value.
+    value = _remove_dangerous_unicode(value)
+
     # Check for dangerous patterns (URL schemes, event handlers)
     _check_dangerous_patterns(value, field_name)
 
     # SQL keyword and shell metacharacter checks (for column names, etc.)
     if check_sql_keywords:
         _check_sql_patterns(value, field_name)
-
-    # Remove dangerous Unicode characters
-    value = _remove_dangerous_unicode(value)
 
     return value
 
@@ -410,6 +461,12 @@ def sanitize_filter_value(
 
     For non-string values, returns as-is (no sanitization needed).
     For strings, uses nh3 to strip HTML and applies security validation.
+
+    Security note: filter values are ultimately bound as query *parameters* by
+    SQLAlchemy (simple ``col``/``op``/``val`` filters are never interpolated
+    into raw SQL), which is the primary defense against SQL injection. The
+    pattern checks below are defense-in-depth heuristics layered on top of that
+    guarantee, not the sole control.
 
     Args:
         value: The filter value (string, int, float, or bool)
@@ -436,22 +493,19 @@ def sanitize_filter_value(
     # Strip all HTML tags using nh3
     value = _strip_html_tags(value)
 
+    # Remove dangerous Unicode BEFORE the pattern scans so zero-width/control
+    # characters cannot be used to obfuscate a payload past the checks and then
+    # be silently stripped, reconstituting it in the returned value.
+    value = _remove_dangerous_unicode(value)
+
     # Check for dangerous patterns
     _check_dangerous_patterns(value, "Filter value")
 
     _check_dangerous_stored_procedures(value, "Filter value")
 
-    # SQL injection patterns specific to filter values
-    sql_patterns = [
-        r";\s*(DROP|DELETE|INSERT|UPDATE|CREATE|ALTER|EXEC|EXECUTE)\b",
-        r"'\s*OR\s*'",
-        r"'\s*AND\s*'",
-        r"--\s*",
-        r"/\*",
-        r"UNION\s+SELECT",
-    ]
-    for pattern in sql_patterns:
-        if re.search(pattern, value, re.IGNORECASE):
+    # Defense-in-depth SQL injection heuristics (see _FILTER_VALUE_SQL_PATTERNS)
+    for pattern in _FILTER_VALUE_SQL_PATTERNS:
+        if pattern.search(value):
             raise ValueError(
                 "Filter value contains potentially malicious SQL patterns."
             )
@@ -465,9 +519,6 @@ def sanitize_filter_value(
     # Check for hex encoding
     if re.search(r"\\x[0-9a-fA-F]{2}", value):
         raise ValueError("Filter value contains hex encoding which is not allowed.")
-
-    # Remove dangerous Unicode characters
-    value = _remove_dangerous_unicode(value)
 
     return value
 

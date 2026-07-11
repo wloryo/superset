@@ -212,6 +212,41 @@ def test_check_sql_patterns_case_insensitive():
         _check_sql_patterns("drop table users", "test")
 
 
+# --- _check_sql_patterns allowlist enforcement ---
+
+
+def test_check_sql_patterns_allows_qualified_identifier():
+    """Dotted schema.table.column identifiers are allowed."""
+    _check_sql_patterns("public.sales.revenue_total", "test")
+
+
+def test_check_sql_patterns_allows_spaces_and_hyphens():
+    _check_sql_patterns("north-america revenue", "test")
+
+
+def test_check_sql_patterns_allows_unicode_letters():
+    _check_sql_patterns("chiffre_daffaires", "test")
+    _check_sql_patterns("café_total", "test")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "col'",  # single quote (string breakout)
+        'col"',  # double quote (identifier quoting)
+        "count(*)",  # function-call parenthesis
+        "a=b",  # comparison operator
+        "col\\x",  # backslash
+        "col#frag",  # hash / MySQL comment lead-in
+        "col%",  # percent wildcard
+    ],
+)
+def test_check_sql_patterns_allowlist_rejects_non_identifier_chars(value: str):
+    """The positive allowlist rejects characters the denylist would miss."""
+    with pytest.raises(ValueError, match="not allowed in an identifier"):
+        _check_sql_patterns(value, "test")
+
+
 # --- _remove_dangerous_unicode tests ---
 
 
@@ -326,6 +361,23 @@ def test_sanitize_user_input_entity_encoded_javascript():
     """Entity-encoded javascript: scheme should be caught after decoding."""
     with pytest.raises(ValueError, match="malicious URL scheme"):
         sanitize_user_input("&#106;avascript:alert(1)", "test")
+
+
+def test_sanitize_user_input_blocks_zwsp_smuggled_keyword():
+    """A zero-width space spliced into DROP must not bypass the keyword check.
+
+    Regression for the ordering bug where _remove_dangerous_unicode ran AFTER
+    _check_sql_patterns: the obfuscated keyword slipped past the scan and the
+    zero-width was then stripped, reconstituting ``DROP`` in the output.
+    """
+    # U+200B between D and R
+    with pytest.raises(ValueError, match="unsafe SQL keywords"):
+        sanitize_user_input("D\u200bROP TABLE users", "test", check_sql_keywords=True)
+
+
+def test_sanitize_user_input_allowlist_rejects_quote_in_column_name():
+    with pytest.raises(ValueError, match="not allowed in an identifier"):
+        sanitize_user_input("col' OR 1=1", "Column name", check_sql_keywords=True)
 
 
 # --- sanitize_filter_value tests ---
@@ -454,6 +506,18 @@ def test_sanitize_filter_value_xss_entity_encoded():
     """Entity-encoded XSS in filter values must be neutralized."""
     result = sanitize_filter_value("&lt;img src=x onerror=alert(1)&gt;")
     assert "<img" not in result
+
+
+def test_sanitize_filter_value_blocks_zwsp_smuggled_union_select():
+    """Zero-width chars spliced into UNION SELECT must not bypass the pattern.
+
+    Regression for the ordering bug where _remove_dangerous_unicode ran AFTER
+    the SQL-pattern scan, letting the obfuscated payload slip through and then
+    be stripped back into ``UNION SELECT`` in the returned value.
+    """
+    # U+200B between UNION and SELECT tokens
+    with pytest.raises(ValueError, match="malicious SQL patterns"):
+        sanitize_filter_value("' UNION\u200b SELECT * FROM users")
 
 
 # --- Defense-in-depth: verify html.unescape is not used after nh3 ---
