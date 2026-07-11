@@ -16,7 +16,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# Security: CVE-2026-21441 - decompression bomb bypass on redirects
+# urllib3 is the HTTP transport under requests (and therefore botocore, docker
+# and selenium in the dev tree). The floor addresses CVE-2026-21441 (decompression
+# bomb bypass on redirects, fixed in 2.6.3); the <3.0.0 cap avoids the next major.
+# The pin was restored/re-affirmed via auto-remediation (#2, #11, #12) and verified
+# consistent for #22: uv resolves this range to urllib3==2.7.0 in both
+# requirements/base.txt and requirements/development.txt, with no conflicting or
+# regressed pin elsewhere in the tree.
 urllib3>=2.6.3,<3.0.0
 # Security: CVE-2026-27199 - Windows device name handling in safe_join
 werkzeug>=3.1.6,<4.0.0
