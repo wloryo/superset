@@ -348,7 +348,9 @@ pytz==2025.2
     #   flask-babel
     #   pandas
 pyxlsb==1.0.10
-    # via pandas
+    # via
+    #   -r requirements/base.in
+    #   pandas
 pyyaml==6.0.3
     # via
     #   apache-superset (pyproject.toml)

@@ -63,3 +63,12 @@ setuptools<81
 # explicitly in pyproject.toml and pin google-auth to the post-drop range so
 # the install path is internally consistent (#40962).
 google-auth>=2.53.0,<3.0.0
+
+# pyxlsb is pulled in transitively via pandas[excel] to parse the binary .xlsb
+# format. 1.0.10 is the latest release on PyPI (published 2022-10-14) and has no
+# published security advisories, so the pin is held at that version. It is
+# LGPLv3+ licensed and tracked for eventual removal (see pyproject.toml
+# [tool.liccheck.authorized_packages]); Superset's own upload flow only accepts
+# xlsx/xls (EXCEL_EXTENSIONS), so no first-party code depends on it. Pinned here
+# to make the reviewed version explicit (#21).
+pyxlsb==1.0.10
