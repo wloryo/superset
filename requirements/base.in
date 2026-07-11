@@ -32,11 +32,17 @@ filelock>=3.20.3,<4.0.0
 brotli>=1.2.0,<2.0.0
 numexpr>=2.9.0
 # numpy 2.x upgrade (#17): the previous 1.26.4 pin predated the ecosystem
-# migration to numpy 2. The resolved tree now installs numpy 2.x with a
+# migration to numpy 2. The resolved tree installs numpy 2.x with a
 # compatible pandas (>=2.2.2 is the first pandas release supporting numpy 2);
 # pyarrow>=24, numexpr>=2.10 and bottleneck>=1.4 all support numpy 2 as well.
 # The abstract floor/cap lives in pyproject.toml ("numpy>=2.0.0, <2.3"); this
 # note records the review outcome so the bump is intentional and auditable.
+# pandas/numpy "current stable" review (#9): numpy 2.3 and pandas 3.0 both
+# dropped Python 3.10, which this project still supports (requires-python
+# >=3.10). numpy 2.2.6 and pandas 2.3.3 are the newest releases of the last
+# 3.10-compatible series, and uv resolves the ranges above to exactly those
+# versions in base.txt/development.txt, so the pins already track the current
+# stable releases for the supported Python range.
 numpy>=2.0.0,<2.3
 # Security: CVE-2026-34073 (MEDIUM) - Improper Certificate Validation
 cryptography>=49.0.0,<50.0.0
