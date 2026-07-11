@@ -154,6 +154,7 @@ flask-talisman==1.1.0
     # via apache-superset (pyproject.toml)
 flask-wtf==1.3.0
     # via
+    #   -r requirements/base.in
     #   apache-superset (pyproject.toml)
     #   flask-appbuilder
 geographiclib==2.0

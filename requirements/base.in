@@ -81,6 +81,15 @@ pyxlsb==1.0.10
 # reviewed version explicit (#20).
 parsedatetime==2.6
 
+# flask-wtf provides Superset's CSRF protection and form handling: FlaskForm
+# (superset.views.base), CSRFProtect (superset.extensions), generate_csrf
+# (superset.security.api) and the CSRFError / same_origin helpers. It is also a
+# transitive dependency of flask-appbuilder. 1.3.0 is the latest release on PyPI
+# (published 2026-04-23); there is nothing newer to bump to. It is BSD-3-Clause
+# licensed (an authorized license) and carries no published security advisories.
+# Pinned here to make the reviewed version explicit (#18).
+flask-wtf==1.3.0
+
 # odfpy is pulled in transitively via pandas[excel] to read/write the
 # OpenDocument spreadsheet (.ods) format. 1.4.1 is the latest release on PyPI
 # (published 2020-01-18); there is nothing newer to bump to. It is Apache
